@@ -189,3 +189,38 @@ def test_repeat_thread_decorator(app):
         assert not any(future.pending() for future in futures)
         assert all(isinstance(future, concurrent.futures.Future) for future in futures)
         assert all(isinstance(future, ScheduledFuture) for future in futures)
+
+def test_unsubmitted_cancel_delay_executor(app):
+    executor = Executor(app)
+    with app.app_context():
+        DELAY = 2
+        future = executor.delay(fib, DELAY, 5)
+        future.cancel()
+        assert future.cancelled() == True
+        assert future.future is None
+
+def test_submitted_cancel_delay_executor(app):
+    app.config['EXECUTOR_MAX_WORKERS'] = 1
+    executor = Executor(app)
+    with app.app_context():
+        DELAY = 0.1
+        _ = executor.delay(fib, DELAY, 35)
+        time.sleep(DELAY)
+        future = executor.delay(fib, DELAY, 5)
+        while future.future is None:
+            pass
+        future.cancel()
+        assert future.cancelled() == True
+        assert future.future is not None
+
+def test_running_cancel_delay_executor(app):
+    app.config['EXECUTOR_MAX_WORKERS'] = 1
+    executor = Executor(app)
+    with app.app_context():
+        DELAY = 0
+        future = executor.delay(fib, DELAY, 35)
+        while future.future is None:
+            pass
+        future.cancel()
+        assert future.cancelled() == False
+        assert future.future is not None
