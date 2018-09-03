@@ -66,9 +66,13 @@ class Executor:
             raise ValueError("{} is not a valid executor type.".format(executor_type))
         return _executor(max_workers=executor_max_workers)
 
-    def submit(self, fn, *args, **kwargs):
+    def _prepare(self, fn):
         if isinstance(self._executor, concurrent.futures.ThreadPoolExecutor):
             fn = with_app_context(fn, current_app._get_current_object())
+        return fn
+
+    def submit(self, fn, *args, **kwargs):
+        fn = self._prepare_fn(fn)
         return self._executor.submit(fn, *args, **kwargs)
 
     def job(self, fn):
