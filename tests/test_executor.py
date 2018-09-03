@@ -1,8 +1,12 @@
 import concurrent.futures
+import time
 
 from flask import Flask
-from flask_executor import Executor, ExecutorJob
 import pytest
+
+from flask_executor import Executor
+from flask_executor.executor import ExecutorJob
+from flask_executor.scheduler import ScheduledFuture
 
 
 EXECUTOR_MAX_WORKERS = 10
@@ -91,3 +95,44 @@ def test_process_decorator(app):
     else:
         assert 0
 
+def test_delay_thread_executor(app):
+    app.config['EXECUTOR_TYPE'] = 'thread'
+    executor = Executor(app)
+    with app.app_context():
+        DELAY = 2
+        future = executor.delay(fib, DELAY, 5)
+        assert future.pending() == True
+        time.sleep(DELAY + 0.2)
+        assert future.pending() == False
+        assert future.result() == fib(5)
+        assert isinstance(future, concurrent.futures.Future)
+        assert isinstance(future, ScheduledFuture)
+
+def test_delay_process_executor(app):
+    app.config['EXECUTOR_TYPE'] = 'process'
+    executor = Executor(app)
+    with app.app_context():
+        DELAY = 2
+        future = executor.delay(fib, DELAY, 5)
+        assert future.pending() == True
+        time.sleep(DELAY + 0.2)
+        assert future.pending() == False
+        assert future.result() == fib(5)
+        assert isinstance(future, concurrent.futures.Future)
+        assert isinstance(future, ScheduledFuture)
+
+def test_delay_thread_decorator(app):
+    app.config['EXECUTOR_TYPE'] = 'thread'
+    executor = Executor(app)
+    @executor.job
+    def decorated(n):
+        return fib(n)
+    with app.app_context():
+        DELAY = 2
+        future = decorated.delay(DELAY, 5)
+        assert future.pending() == True
+        time.sleep(DELAY + 0.2)
+        assert future.pending() == False
+        assert future.result() == fib(5)
+        assert isinstance(future, concurrent.futures.Future)
+        assert isinstance(future, ScheduledFuture)
