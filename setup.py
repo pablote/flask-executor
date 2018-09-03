@@ -40,7 +40,7 @@ setuptools.setup(
         "Operating System :: OS Independent",
     ],
     license='MIT',
-    install_requires=['Flask'],
+    install_requires=['Flask', 'sortedcontainers'],
     extras_require={
         ':python_version == "2.7"': ['futures']
     },
