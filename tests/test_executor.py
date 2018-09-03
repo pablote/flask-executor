@@ -136,3 +136,34 @@ def test_delay_thread_decorator(app):
         assert future.result() == fib(5)
         assert isinstance(future, concurrent.futures.Future)
         assert isinstance(future, ScheduledFuture)
+
+
+def test_repeat_thread_executor(app):
+    app.config['EXECUTOR_TYPE'] = 'thread'
+    executor = Executor(app)
+    with app.app_context():
+        REPEAT = 10
+        DELAY = 0.2
+        futures = executor.repeat(fib, REPEAT, DELAY, 5)
+        assert len(futures) == 10
+        time.sleep(DELAY + 0.2)
+        assert futures[0].pending() == False
+        assert futures[-1].pending() == True
+        assert all(future.result() == fib(5) for future in futures)
+        assert all(isinstance(future, concurrent.futures.Future) for future in futures)
+        assert all(isinstance(future, ScheduledFuture) for future in futures)
+
+def test_repeat_process_executor(app):
+    app.config['EXECUTOR_TYPE'] = 'process'
+    executor = Executor(app)
+    with app.app_context():
+        REPEAT = 10
+        DELAY = 0.2
+        futures = executor.repeat(fib, REPEAT, DELAY, 5)
+        assert len(futures) == 10
+        time.sleep(DELAY + 0.2)
+        assert futures[0].pending() == False
+        assert futures[-1].pending() == True
+        assert all(future.result() == fib(5) for future in futures)
+        assert all(isinstance(future, concurrent.futures.Future) for future in futures)
+        assert all(isinstance(future, ScheduledFuture) for future in futures)
