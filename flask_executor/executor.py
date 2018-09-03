@@ -37,12 +37,13 @@ class ExecutorJob:
         self.fn = fn
 
     def submit(self, *args, **kwargs):
-        future = self.executor.submit(self.fn, *args, **kwargs)
-        return future
+        return self.executor.submit(self.fn, *args, **kwargs)
 
     def delay(self, delay, *args, **kwargs):
-        future = self.executor.delay(self.fn, delay, *args, **kwargs)
-        return future
+        return self.executor.delay(self.fn, delay, *args, **kwargs)
+
+    def repeat(self, cycles, delay, *args, **kwargs):
+        return self.executor.repeat(self.fn, cycles, delay, *args, **kwargs)
 
 
 class Executor:
@@ -86,6 +87,13 @@ class Executor:
     def delay(self, fn, delay, *args, **kwargs):
         fn = self._prepare_fn(fn)
         return self._scheduler.add(fn, delay, *args, **kwargs)
+
+    def repeat(self, fn, cycles, delay, *args, **kwargs):
+        futures = []
+        for i in range(cycles):
+            future = self.delay(fn, i*delay, *args, **kwargs)
+            futures.append(future)
+        return futures
 
     def job(self, fn):
         if isinstance(self._executor, concurrent.futures.ProcessPoolExecutor):
