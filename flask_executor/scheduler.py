@@ -1,5 +1,5 @@
 from concurrent.futures import Future
-from concurrent.futures._base import PENDING
+from concurrent.futures._base import PENDING, CancelledError
 import threading
 import time
 
@@ -14,6 +14,7 @@ class ScheduledFuture(Future):
         self.due = due
         self.args = args
         self.kwargs = kwargs
+        self.future = None
         super(ScheduledFuture, self).__init__()
 
     def pending(self):
@@ -24,14 +25,23 @@ class ScheduledFuture(Future):
         try:
             result = future.result()
         except BaseException as exc:
-            self.set_exception(exc)
+            if isinstance(exc, CancelledError):
+                super(ScheduledFuture, self).cancel()
+            else:
+                self.set_exception(exc)
         else:
             self.set_result(result)
 
     def submit(self):
-        future = self.executor._executor.submit(self.fn, *self.args, **self.kwargs)
-        future.add_done_callback(self.set_result_from_future)
-        return future
+        if self.future is None:
+            self.future = self.executor._executor.submit(self.fn, *self.args, **self.kwargs)
+            self.future.add_done_callback(self.set_result_from_future)
+        return self.future
+
+    def cancel(self):
+        if self.future:
+            return self.future.cancel()
+        return super(ScheduledFuture, self).cancel()
 
 
 class Scheduler:
