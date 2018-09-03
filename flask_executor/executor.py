@@ -3,6 +3,8 @@ import sys
 
 from flask import current_app
 
+from flask_executor.scheduler import Scheduler
+
 
 workers_multiplier = {
     'thread': 1,
@@ -38,12 +40,17 @@ class ExecutorJob:
         future = self.executor.submit(self.fn, *args, **kwargs)
         return future
 
+    def delay(self, delay, *args, **kwargs):
+        future = self.executor.delay(self.fn, delay, *args, **kwargs)
+        return future
+
 
 class Executor:
 
     def __init__(self, app=None):
         self.app = app
         self._executor = None
+        self._scheduler = None
         if app is not None:
             self.init_app(app)
 
@@ -53,6 +60,7 @@ class Executor:
         executor_max_workers = default_workers(executor_type)
         app.config.setdefault('EXECUTOR_MAX_WORKERS', executor_max_workers)
         self._executor = self._make_executor(app)
+        self._scheduler = Scheduler(self)
         app.extensions['executor'] = self
 
     def _make_executor(self, app):
@@ -66,7 +74,7 @@ class Executor:
             raise ValueError("{} is not a valid executor type.".format(executor_type))
         return _executor(max_workers=executor_max_workers)
 
-    def _prepare(self, fn):
+    def _prepare_fn(self, fn):
         if isinstance(self._executor, concurrent.futures.ThreadPoolExecutor):
             fn = with_app_context(fn, current_app._get_current_object())
         return fn
@@ -74,6 +82,10 @@ class Executor:
     def submit(self, fn, *args, **kwargs):
         fn = self._prepare_fn(fn)
         return self._executor.submit(fn, *args, **kwargs)
+
+    def delay(self, fn, delay, *args, **kwargs):
+        fn = self._prepare_fn(fn)
+        return self._scheduler.add(fn, delay, *args, **kwargs)
 
     def job(self, fn):
         if isinstance(self._executor, concurrent.futures.ProcessPoolExecutor):
