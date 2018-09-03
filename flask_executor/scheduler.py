@@ -39,7 +39,8 @@ class Scheduler:
     def __init__(self, executor):
         self.executor = executor
         self.scheduled_futures = SortedList(key=lambda sf: sf.due)
-        self.scheduler = threading.Thread(target=self.cycle, daemon=True)
+        self.scheduler = threading.Thread(target=self.cycle)
+        self.scheduler.daemon = True
 
     def add(self, fn, delay, *args, **kwargs):
         if not self.scheduler.is_alive():
