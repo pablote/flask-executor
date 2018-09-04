@@ -130,10 +130,14 @@ def test_delay_thread_decorator(app):
         return fib(n)
     with app.app_context():
         DELAY = 2
-        future = decorated.delay(DELAY, 5)
+        future = decorated.delay(DELAY, 35)
         time.sleep(DELAY / 1.25)
         assert future.pending() == True
-        assert future.result() == fib(5)
+        while future.future is None:
+            pass
+        time.sleep(0.1)
+        assert future.running() == True
+        assert future.result() == fib(35)
         assert future.pending() == False
         assert isinstance(future, concurrent.futures.Future)
         assert isinstance(future, ScheduledFuture)
@@ -221,6 +225,7 @@ def test_running_cancel_delay_executor(app):
         future = executor.delay(fib, DELAY, 35)
         while future.future is None:
             pass
+        time.sleep(0.1)
         future.cancel()
         assert future.cancelled() == False
         assert future.future is not None

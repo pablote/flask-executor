@@ -21,6 +21,11 @@ class ScheduledFuture(Future):
         with self._condition:
             return self._state == PENDING
 
+    def running(self):
+        if self.future:
+            return self.future.running() and self.set_running_or_notify_cancel()
+        return super(ScheduledFuture, self).running()
+
     def set_result_from_future(self, future):
         try:
             result = future.result()
